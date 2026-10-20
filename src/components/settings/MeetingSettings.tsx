@@ -32,6 +32,21 @@ export function MeetingSpeakerDetectionRow() {
   );
 }
 
+function MeetingAutoSummaryRow() {
+  const { t } = useTranslation();
+  const autoSummarizeMeetings = useSettingsStore((s) => s.autoSummarizeMeetings);
+  const setAutoSummarizeMeetings = useSettingsStore((s) => s.setAutoSummarizeMeetings);
+
+  return (
+    <SettingsRow
+      label={t("settings.meeting.autoSummary.title")}
+      description={t("settings.meeting.autoSummary.description")}
+    >
+      <Toggle checked={autoSummarizeMeetings} onChange={setAutoSummarizeMeetings} />
+    </SettingsRow>
+  );
+}
+
 function MeetingEchoCancellationRow() {
   const { t } = useTranslation();
   const meetingAecEnabled = useSettingsStore((s) => s.meetingAecEnabled);
@@ -203,6 +218,7 @@ export function MeetingTranscriptionPanel() {
       {effectiveTranscriptionMode === "providers" && renderTranscriptionPicker("cloud")}
       {effectiveTranscriptionMode === "local" && renderTranscriptionPicker("local")}
       <MeetingSpeakerDetectionRow />
+      <MeetingAutoSummaryRow />
       <MeetingEchoCancellationRow />
     </div>
   );

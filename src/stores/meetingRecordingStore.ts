@@ -1745,6 +1745,23 @@ export async function stopRecording(expectedSessionId?: string): Promise<StopRec
     });
 
     logger.info("Meeting transcription stopped", {}, "meeting");
+
+    // Summarise in the background after the final transcript is on the note, so
+    // the Markdown mirror and cloud sync receive the summary without making the
+    // user click the AI Summary action.
+    if (getSettings().autoSummarizeMeetings && recordingNoteId != null) {
+      const noteId = recordingNoteId;
+      void import("../helpers/autoSummarizeMeeting")
+        .then(({ autoSummarizeMeeting }) => autoSummarizeMeeting(noteId))
+        .catch((err) =>
+          logger.error(
+            "Auto-summary failed after recording",
+            { noteId, error: (err as Error).message },
+            "meeting"
+          )
+        );
+    }
+
     // Reaching here means this call ended a live recording and its transcript
     // was written above. A failed main-side teardown is surfaced by
     // reportMeetingError and must not be reported as a recording that never stopped.

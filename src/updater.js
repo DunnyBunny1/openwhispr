@@ -4,6 +4,9 @@ const { autoUpdater } = require("electron-updater");
 // installs are updated by the package manager instead.
 const isUpdaterSupported = process.platform !== "linux" || Boolean(process.env.APPIMAGE);
 
+// Local build with custom meeting automation: upstream updates would replace it.
+const CUSTOM_BUILD = true;
+
 class UpdateManager {
   constructor() {
     this.updateAvailable = false;
@@ -158,6 +161,15 @@ class UpdateManager {
 
   async checkForUpdates() {
     try {
+      // This local build carries custom meeting automation; installing an
+      // upstream release would silently remove it.
+      if (CUSTOM_BUILD) {
+        return {
+          updateAvailable: false,
+          message: "Updates are disabled for this custom build",
+        };
+      }
+
       if (process.env.NODE_ENV === "development") {
         return {
           updateAvailable: false,
@@ -303,10 +315,8 @@ class UpdateManager {
     }
   }
 
-  setAutoUpdatesEnabled(enabled) {
-    this.autoUpdatesEnabled = enabled;
-    // The startup check may have found an update before the renderer synced.
-    if (enabled) this._autoDownloadIfEnabled();
+  setAutoUpdatesEnabled(_enabled) {
+    this.autoUpdatesEnabled = false;
   }
 
   // NSIS and AppImage install a downloaded update from their quit handler, which would
@@ -332,6 +342,7 @@ class UpdateManager {
   // Checks always run so the sidebar can offer a manual download when automatic
   // updates are off; a failed background check is logged and never surfaced.
   _autoCheckForUpdates(label) {
+    if (CUSTOM_BUILD) return;
     console.log(`🔄 ${label} update check...`);
     autoUpdater.checkForUpdates().catch((err) => {
       console.error(`${label} update check failed:`, err);

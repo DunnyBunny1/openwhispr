@@ -706,6 +706,7 @@ class IPCHandlers {
     this._retentionSettings = { ...DEFAULT_RETENTION_SETTINGS }; // Synced from renderer
     this._retentionSettingsSynced = false;
     this._noteFilesEnabled = false;
+    this._initDefaultNoteFiles();
     this._granolaImportPending = null;
     this._analyticsHistoryBackfillPromise = null;
     this.speakerDiarizationEnabled = true;
@@ -1085,6 +1086,28 @@ class IPCHandlers {
     if (stillLive) return;
     const markdownMirror = require("./markdownMirror");
     markdownMirror.deleteFolder(folderName);
+  }
+
+  _noteFilesDisabledMarker() {
+    return path.join(app.getPath("userData"), ".note-files-disabled");
+  }
+
+  // This build saves notes and transcripts to Documents/OpenWhispr by default,
+  // including when the app starts minimized and the settings UI never mounts.
+  // An explicit disable leaves a marker so a later launch keeps it off.
+  _initDefaultNoteFiles() {
+    try {
+      if (fs.existsSync(this._noteFilesDisabledMarker())) return;
+      const basePath = path.join(app.getPath("documents"), "OpenWhispr");
+      require("./markdownMirror").init(basePath);
+      this._noteFilesEnabled = true;
+    } catch (error) {
+      debugLogger.error(
+        "Failed to initialize default note files",
+        { error: error.message },
+        "note-files"
+      );
+    }
   }
 
   _asyncMirrorWrite(note) {
@@ -12446,8 +12469,14 @@ class IPCHandlers {
     ipcMain.handle("note-files-set-enabled", async (_event, enabled, customPath, options) => {
       try {
         this._noteFilesEnabled = !!enabled;
-        if (!enabled) return { success: true };
-        const basePath = customPath || path.join(app.getPath("userData"), "notes");
+        if (!enabled) {
+          fs.writeFileSync(this._noteFilesDisabledMarker(), new Date().toISOString());
+          return { success: true };
+        }
+        try {
+          fs.unlinkSync(this._noteFilesDisabledMarker());
+        } catch {}
+        const basePath = customPath || path.join(app.getPath("documents"), "OpenWhispr");
         if (options?.skipRebuild) {
           require("./markdownMirror").init(basePath);
         } else {
@@ -12487,7 +12516,7 @@ class IPCHandlers {
     });
 
     ipcMain.handle("note-files-get-default-path", async () => {
-      return path.join(app.getPath("userData"), "notes");
+      return path.join(app.getPath("documents"), "OpenWhispr");
     });
 
     ipcMain.handle("show-note-file", async (_event, noteId) => {

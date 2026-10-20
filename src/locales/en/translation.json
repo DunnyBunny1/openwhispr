@@ -54,6 +54,10 @@
       "speakerDetection": {
         "title": "Identify and label speakers",
         "description": "When off, transcripts show \"You\" and \"Others\""
+      },
+      "autoSummary": {
+        "title": "Generate AI summary after recording",
+        "description": "Automatically run the AI Summary template when a meeting recording stops"
       }
     }
   },
