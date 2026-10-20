@@ -42,11 +42,33 @@ export.
 source ~/.nvm/nvm.sh && nvm use 24.4.1
 cd ~/Developer/openwhispr
 npm run prebuild:mac          # only needed when native binaries/models are missing
-CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:mac:arm64
+CSC_NAME="Apple Development: donovanrmurray13@gmail.com (5882CUM8H5)" npm run build:mac:arm64
 ```
 
 Then quit OpenWhispr and copy `dist/mac-arm64/OpenWhispr.app` to
 `/Applications/OpenWhispr.app`.
+
+Sign with the local Apple Development certificate, never ad-hoc.
+Ad-hoc signatures have a cdhash-based designated requirement and no stable
+identity, so macOS drops the Accessibility/Input Monitoring grants on relaunch
+or after every rebuild. The certificate keeps one stable TCC identity.
+If a build still comes out ad-hoc, sign the bundle and its resource binaries:
+
+```bash
+cd ~/Developer/openwhispr
+find /Applications/OpenWhispr.app/Contents/Resources -type f -print0 |
+while IFS= read -r -d '' f; do
+  file -b "$f" | grep -q Mach-O || continue
+  codesign --force --options runtime \
+    --entitlements resources/mac/entitlements.mac.plist \
+    --sign "Apple Development: donovanrmurray13@gmail.com (5882CUM8H5)" "$f"
+done
+codesign --force --deep --options runtime \
+  --entitlements resources/mac/entitlements.mac.plist \
+  --sign "Apple Development: donovanrmurray13@gmail.com (5882CUM8H5)" \
+  /Applications/OpenWhispr.app
+codesign --verify --deep --strict /Applications/OpenWhispr.app
+```
 
 ## Rollback
 
